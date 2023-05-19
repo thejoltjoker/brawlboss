@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+requests = "*"
+python-dotenv = "*"
+"discord.py" = "*"
+pymongo = "*"
+motor = "*"
+aiohttp= "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
+full_python_version = "3.9.14"
