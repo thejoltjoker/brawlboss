@@ -7,7 +7,7 @@ import logging
 import random
 import re
 import string
-from datetime import datetime
+from datetime import datetime, timedelta
 from pprint import pprint
 
 import requests
@@ -33,6 +33,23 @@ def public_ip():
         ip = response.text.strip()
 
     return ip
+
+
+def format_seconds(seconds):
+    # Calculate hours, minutes, and remaining seconds
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    # Create a formatted string
+    formatted_time = f"{hours:02}:{minutes:02}:{seconds:02}"
+
+    return formatted_time
+
+
+def get_since_date(weeks=0, days=0, hours=0, minutes=0, seconds=0):
+    since_date = datetime.utcnow() - timedelta(days=days, seconds=seconds, minutes=minutes, hours=hours,
+                                               weeks=weeks)
+    return since_date
 
 
 def battle_log_id(battle_log):
@@ -68,7 +85,7 @@ def player_to_profile_message(player, **kwargs):
                   f"🏆 **Trophies:** {trophies} ({highest_trophies})\n"
     # Experience
     message = f"{message}\n" \
-              f"⬆️ **Exp Level:** Level {player.get('expLevel')} ({player.get('expPoints')} points)\n"
+              f"⬆️ **Exp Level:** {player.get('expLevel')} ({player.get('expPoints')} points)\n"
 
     # Club
     club = player.get('club')
@@ -82,10 +99,10 @@ def player_to_profile_message(player, **kwargs):
         rank_msg = '🌺 **Club rank:** #12'
 
     # Challenges
-    message = f"{message}\n" \
-              f"**Challenges**\n" \
-              f"🤖 **Best Robo Rumble Time:** {player.get('bestRoboRumbleTime')}\n" \
-              f"🐘 **Best Time As Big Brawler:** {player.get('bestTimeAsBigBrawler')}\n"
+    # message = f"{message}\n" \
+    # f"**Challenges**\n" \
+    # f"🤖 **Best Robo Rumble Time:** {player.get('bestRoboRumbleTime')}\n" \
+    # f"🐘 **Best Time As Big Brawler:** {player.get('bestTimeAsBigBrawler')}\n"
 
     # Stats
     message = f"{message}\n" \
@@ -103,9 +120,37 @@ def player_to_profile_message(player, **kwargs):
         message = f"{message}\n" \
                   f"🏁 **Win rate:** {round((victories / total) * 100)}%\n"
 
+        # Win rate
+        star_player = kwargs.get('starPlayer')
+        if star_player:
+            message = f"{message}" \
+                      f"⭐ **Star player rate:** {round((star_player / total) * 100)}%\n"
+
     extra = f"*Last 7 days / last 30 days*" \
             f"🏅 **Victories:** 15 / 52" \
             f"💩 **Defeats:** 32 / 42"
+    return message
+
+
+def rankings_message(rankings):
+    """Return a formatted list of club rankings"""
+    message = 'Club rankings for the past seven days:'
+    for i, player in enumerate(rankings, 1):
+        if i == 1:
+            i = '🥇'
+        elif i == 2:
+            i = '🥈'
+        elif i == 3:
+            i = '🥉'
+        elif i == 4:
+            i = f'\n{i}.'
+        else:
+            i = f'{i}.'
+
+        name_part = f'{i} **{player["name"]}** `{player["tag"]}`'
+        score_part = f'Score: **{round(player["score"], 2)}**'
+        message = f'{message}\n' \
+                  f'{name_part} | {score_part}'
     return message
 
 

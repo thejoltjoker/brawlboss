@@ -86,6 +86,7 @@ async def main():
     club_tag = os.getenv('BRAWLSTARS_CLUB_TAG')
     async with BrawlStarsApiAsync() as api:
         print(await api.get_club(club_tag))
+        print(await api.get_events())
 
 
 if __name__ == '__main__':

@@ -4,6 +4,8 @@ Description of main.py.
 """
 import logging
 import os
+import socket
+
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -30,6 +32,11 @@ async def club_to_database():
         return club
     else:
         logger.warning(f'Could not get data from api')
+
+
+async def player_of_the_week():
+    """Get the player with the most wins in the last 7 days"""
+    pass
 
 
 async def player_exists(tag):
@@ -103,8 +110,8 @@ class Bot(commands.Bot):
         super().__init__(command_prefix='!', intents=intents)
 
     async def setup_hook(self) -> None:
-        synced = await self.tree.sync()
-        # synced = await self.tree.sync(guild=guild)
+        # synced = await self.tree.sync()
+        synced = await self.tree.sync(guild=guild)
         for s in synced:
             logger.debug(s)
         logger.info(f'Synced slash commands for {self.user}')
@@ -125,11 +132,26 @@ async def update_database():
 @bot.event
 async def on_ready():
     print(f"I'm alive! {bot.user} (ID: {bot.user.id})")
+    # Test api connection
+    async with brawlstars.BrawlStarsApiAsync() as api:
+        data = await api.get_events()
+        if data:
+            logger.info('API connection successful')
+        else:
+            logger.warning(f'API returned {data}')
+    # Test database connection
+    db_conn = await db.test_connection()
+    if db_conn:
+        logger.info('Database connection successful')
+    else:
+        logger.warning(f'Failed to connect to database')
+
+    # Update database from api
     update_database.start()
 
 
 @bot.hybrid_command(name='ping', description='Play some ping pong')
-# @app_commands.guilds(guild)
+@app_commands.guilds(guild)
 async def ping(ctx):
     """Says hello!"""
     await ctx.send(f'pong')
@@ -138,7 +160,7 @@ async def ping(ctx):
 @bot.hybrid_command(name='profile',
                     description='Get Brawl Stars profile of you or another member',
                     with_app_command=True)
-# @app_commands.guilds(guild)
+@app_commands.guilds(guild)
 async def profile(ctx, member: discord.Member = None):
     if member:
         user = member.id
@@ -148,8 +170,18 @@ async def profile(ctx, member: discord.Member = None):
     message = f'Sorry, no player found for <@{user}>'
     if player:
         wins, losses, total = await db.battle_count(player['tag'])
-        message = helper.player_to_profile_message(player, victories=wins, defeats=losses)
+        star_player = await db.star_player_count(player['tag'])
+        message = helper.player_to_profile_message(player, victories=wins, defeats=losses, starPlayer=star_player)
 
+    await ctx.send(message)
+
+
+@bot.hybrid_command(name='rankings',
+                    description='Get the club rankings for the last seven days')
+@app_commands.guilds(guild)
+async def rankings(ctx):
+    rankings_list = await db.club_rankings(club_tag)
+    message = helper.rankings_message(rankings_list)
     await ctx.send(message)
 
 
@@ -157,7 +189,7 @@ async def profile(ctx, member: discord.Member = None):
                     description='Link your Discord profile with a Brawl Stars account',
                     with_app_command=True)
 @app_commands.describe(tag='#PLAYERTAG')
-# @app_commands.guilds(guild)
+@app_commands.guilds(guild)
 async def link(ctx, tag: str):
     user_id = ctx.author.id
     message = f'No Brawl Stars account exists for `{tag}`'
@@ -174,12 +206,12 @@ async def link(ctx, tag: str):
     await ctx.send(message)
 
 
-# @app_commands.guilds(guild) # temp disable
+
 @bot.hybrid_command(name='slap',
                     description='Slap someone who deserves it',
                     with_app_command=True)
 @app_commands.describe(member='The person to slap')
-# @app_commands.guilds(guild)
+@app_commands.guilds(guild)
 async def slap(ctx, member: discord.Member):
     """Says when a member joined."""
     author = ctx.message.author
@@ -193,7 +225,7 @@ async def slap(ctx, member: discord.Member):
                     description='Have some fun with another member',
                     with_app_command=True)
 @app_commands.describe(member='The member to engage with')
-# @app_commands.guilds(guild)
+@app_commands.guilds(guild)
 async def engage(ctx, member: discord.Member):
     """Says when a member joined."""
     author = ctx.message.author
@@ -204,4 +236,5 @@ async def engage(ctx, member: discord.Member):
 
 if __name__ == '__main__':
     logger.info(f'Bot IP: {helper.public_ip()}')
+    print(os.getenv('DISCORD_TOKEN'))
     bot.run(os.getenv('DISCORD_TOKEN'), log_handler=None)

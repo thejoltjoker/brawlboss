@@ -10,6 +10,7 @@ python-dotenv = "*"
 pymongo = "*"
 motor = "*"
 aiohttp= "*"
+click = "*"
 
 [dev-packages]
 
